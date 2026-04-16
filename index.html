@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SmartWardrobe | Minimal Wardrobe Planner</title>
   <meta name="description" content="A clean wardrobe dashboard with Supabase auth, item storage, and outfit planning." />
+  <link rel="icon" type="image/svg+xml" href='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"%3E%3Crect width="64" height="64" rx="10" fill="%23171717"/%3E%3Ctext x="32" y="41" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="800" fill="white"%3EW%3C/text%3E%3C/svg%3E'>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -74,7 +75,7 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 2xl:max-w-[1500px]">
       <div class="flex h-16 items-center justify-between">
         <button class="flex items-center gap-3 text-left" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
-          <span class="flex h-9 w-9 items-center justify-center rounded border border-ink bg-ink text-sm font-extrabold text-white">S</span>
+          <span class="flex h-9 w-9 items-center justify-center rounded border border-ink bg-ink text-sm font-extrabold text-white">W</span>
           <span class="text-base font-semibold tracking-tight">SmartWardrobe</span>
         </button>
 
@@ -143,16 +144,16 @@
 
         <div class="grid grid-cols-3 border-t border-line pt-4 text-center">
           <div>
-            <p class="text-2xl font-bold">24</p>
+            <p id="total-items-stat" class="text-2xl font-bold">0</p>
             <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted">Items</p>
           </div>
           <div class="border-x border-line">
-            <p class="text-2xl font-bold">3</p>
+            <p id="outfit-combos-stat" class="text-2xl font-bold">0</p>
             <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted">Outfits</p>
           </div>
           <div>
-            <p class="text-2xl font-bold">1</p>
-            <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted">Flow</p>
+            <p id="photo-items-stat" class="text-2xl font-bold">0</p>
+            <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted">Photos</p>
           </div>
         </div>
       </div>
@@ -209,13 +210,16 @@
             <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
                 <h3 class="text-2xl font-bold tracking-tight">My wardrobe</h3>
-                <p class="mt-1 text-sm text-muted">Filter items and keep the list easy to scan.</p>
+                <p class="mt-1 text-sm text-muted">Search, filter, and keep the list easy to scan.</p>
               </div>
-              <div class="flex flex-wrap gap-2 text-sm">
-                <button class="filter-btn rounded border border-ink bg-ink px-4 py-2 font-medium text-white" data-filter="all">All</button>
-                <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="tops">Tops</button>
-                <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="bottoms">Bottoms</button>
-                <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="shoes">Shoes</button>
+              <div class="grid gap-2 md:min-w-[420px]">
+                <input id="wardrobe-search" type="search" placeholder="Search wardrobe..." class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+                <div class="flex flex-wrap gap-2 text-sm md:justify-end">
+                  <button class="filter-btn rounded border border-ink bg-ink px-4 py-2 font-medium text-white" data-filter="all">All</button>
+                  <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="tops">Tops</button>
+                  <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="bottoms">Bottoms</button>
+                  <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="shoes">Shoes</button>
+                </div>
               </div>
             </div>
             <div id="items-list" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -417,11 +421,15 @@
       const addItemBtn = document.getElementById('add-item-btn');
       const itemMessage = document.getElementById('item-message');
       const itemsList = document.getElementById('items-list');
+      const wardrobeSearch = document.getElementById('wardrobe-search');
       const suggestOutfitBtn = document.getElementById('suggest-outfit-btn');
       const buildOutfitBtn = document.getElementById('build-outfit-btn');
       const outfitPrompt = document.getElementById('outfit-prompt');
       const outfitSuggestion = document.getElementById('outfit-suggestion');
       const outfitMessage = document.getElementById('outfit-message');
+      const totalItemsStat = document.getElementById('total-items-stat');
+      const outfitCombosStat = document.getElementById('outfit-combos-stat');
+      const photoItemsStat = document.getElementById('photo-items-stat');
       const heroTopSlot = document.getElementById('hero-top-slot');
       const heroBottomSlot = document.getElementById('hero-bottom-slot');
       const heroShoesSlot = document.getElementById('hero-shoes-slot');
@@ -438,6 +446,7 @@
       let currentUser = null;
       let wardrobeCache = [];
       let activeFilter = 'all';
+      let activeSearch = '';
       let editingItemId = null;
 
       function setMessage(text, error = false) {
@@ -480,6 +489,19 @@
       }
       function normalizeText(value) {
         return String(value || '').toLowerCase();
+      }
+      function formatStat(value) {
+        return value > 999 ? '999+' : String(value);
+      }
+      function updateStats() {
+        const tops = wardrobeCache.filter(item => item.category === 'tops').length;
+        const bottoms = wardrobeCache.filter(item => item.category === 'bottoms').length;
+        const shoes = wardrobeCache.filter(item => item.category === 'shoes').length;
+        const photos = wardrobeCache.filter(item => item.image_url).length;
+
+        totalItemsStat.textContent = formatStat(wardrobeCache.length);
+        outfitCombosStat.textContent = formatStat(tops * bottoms * shoes);
+        photoItemsStat.textContent = formatStat(photos);
       }
       function getPromptProfile(prompt) {
         const text = normalizeText(prompt);
@@ -663,16 +685,23 @@
           signOutBtn.classList.add('hidden');
           sessionEmail.textContent = '';
           wardrobeCache = [];
+          activeSearch = '';
+          wardrobeSearch.value = '';
           outfitSuggestion.innerHTML = '<div class="border border-dashed border-line bg-white p-4 text-sm text-muted sm:col-span-3">Sign in and add tops, bottoms, and shoes to generate an outfit.</div>';
           setOutfitMessage('');
           resetHeroOutfit();
+          updateStats();
           renderItems();
         }
       }
 
       function getFilteredItems() {
-        if (activeFilter === 'all') return wardrobeCache;
-        return wardrobeCache.filter(item => (item.category || '').toLowerCase().includes(activeFilter));
+        return wardrobeCache.filter(item => {
+          const matchesFilter = activeFilter === 'all' || (item.category || '').toLowerCase().includes(activeFilter);
+          const searchableText = normalizeText(`${item.item_name || ''} ${item.category || ''} ${item.color || ''}`);
+          const matchesSearch = !activeSearch || searchableText.includes(activeSearch);
+          return matchesFilter && matchesSearch;
+        });
       }
 
       function renderItems() {
@@ -684,7 +713,9 @@
           return;
         }
         if (!items.length) {
-          itemsList.innerHTML = '<div class="text-sm text-muted">No items yet.</div>';
+          itemsList.innerHTML = activeSearch
+            ? '<div class="text-sm text-muted">No matching items.</div>'
+            : '<div class="text-sm text-muted">No items yet.</div>';
           return;
         }
 
@@ -725,6 +756,17 @@
         const { data: publicData } = supabase.storage.from('wardrobe-images').getPublicUrl(data.path);
         return publicData.publicUrl;
       }
+      function getStoragePathFromUrl(imageUrl) {
+        if (!imageUrl || !imageUrl.includes('/storage/v1/object/public/wardrobe-images/')) return null;
+        return decodeURIComponent(imageUrl.split('/storage/v1/object/public/wardrobe-images/')[1] || '');
+      }
+      async function deleteItemImage(imageUrl) {
+        const storagePath = getStoragePathFromUrl(imageUrl);
+        if (!storagePath) return null;
+
+        const { error } = await supabase.storage.from('wardrobe-images').remove([storagePath]);
+        return error;
+      }
 
       async function loadItems() {
         if (!currentUser) return;
@@ -738,6 +780,7 @@
           return;
         }
         wardrobeCache = data || [];
+        updateStats();
         renderItems();
       }
 
@@ -867,6 +910,7 @@
           if (!item || !window.confirm(`Delete "${item.item_name}"?`)) return;
 
           setItemMessage('Deleting item...');
+          const imageDeleteError = await deleteItemImage(item.image_url);
           const { error } = await supabase
             .from('wardrobe_items')
             .delete()
@@ -878,7 +922,8 @@
             return;
           }
 
-          setItemMessage('Item deleted.');
+          setItemMessage(imageDeleteError ? 'Item deleted. Image cleanup was blocked by Storage policy.' : 'Item deleted.');
+          resetHeroOutfit();
           await loadItems();
         }
       });
@@ -925,6 +970,10 @@
       buildOutfitBtn.addEventListener('click', () => buildOutfit(outfitPrompt.value.trim()));
       outfitPrompt.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') buildOutfit(outfitPrompt.value.trim());
+      });
+      wardrobeSearch.addEventListener('input', () => {
+        activeSearch = normalizeText(wardrobeSearch.value.trim());
+        renderItems();
       });
 
       document.querySelectorAll('.filter-btn').forEach(btn => {
