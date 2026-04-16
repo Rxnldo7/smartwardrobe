@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartWardrobe | Minimal Wardrobe Planner</title>
+  <meta name="description" content="A clean wardrobe dashboard with Supabase auth, item storage, and outfit planning." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            ink: '#171717',
+            paper: '#fafafa',
+            line: '#e5e5e5',
+            muted: '#737373',
+            accent: '#2563eb'
+          },
+          boxShadow: {
+            calm: '0 18px 45px rgba(23, 23, 23, 0.07)'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    ::selection {
+      background: #dbeafe;
+      color: #171717;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #fafafa;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #d4d4d4;
+      border: 3px solid #fafafa;
+      border-radius: 999px;
+    }
+
+    .minimal-grid {
+      background-image:
+        linear-gradient(#f2f2f2 1px, transparent 1px),
+        linear-gradient(90deg, #f2f2f2 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+  </style>
+</head>
+<body class="font-sans bg-paper text-ink antialiased overflow-x-hidden">
+  <nav id="navbar" class="fixed inset-x-0 top-0 z-50 border-b border-line bg-paper/90 backdrop-blur-xl transition-shadow">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 2xl:max-w-[1500px]">
+      <div class="flex h-16 items-center justify-between">
+        <button class="flex items-center gap-3 text-left" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
+          <span class="flex h-9 w-9 items-center justify-center rounded border border-ink bg-ink text-sm font-extrabold text-white">S</span>
+          <span class="text-base font-semibold tracking-tight">SmartWardrobe</span>
+        </button>
+
+        <div class="hidden items-center gap-7 text-sm font-medium text-neutral-600 md:flex">
+          <a href="#wardrobe" class="transition-colors hover:text-ink">Wardrobe</a>
+          <a href="#outfits" class="transition-colors hover:text-ink">Outfits</a>
+          <a href="#insights" class="transition-colors hover:text-ink">Insights</a>
+          <button id="open-auth-btn" class="rounded border border-ink bg-ink px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-700">Sign in</button>
+        </div>
+
+        <button id="mobile-menu-btn" class="flex h-10 w-10 items-center justify-center rounded border border-line text-ink md:hidden" aria-label="Open menu">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 7h16M4 12h16M4 17h16"></path>
+          </svg>
+        </button>
+      </div>
+
+      <div id="mobile-menu" class="hidden border-t border-line py-3 md:hidden">
+        <div class="flex flex-col gap-1 text-sm font-medium text-neutral-700">
+          <a href="#wardrobe" class="rounded px-3 py-3 hover:bg-white">Wardrobe</a>
+          <a href="#outfits" class="rounded px-3 py-3 hover:bg-white">Outfits</a>
+          <a href="#insights" class="rounded px-3 py-3 hover:bg-white">Insights</a>
+          <button id="open-auth-btn-mobile" class="mt-2 rounded border border-ink bg-ink px-3 py-3 text-left font-semibold text-white">Sign in</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <header class="minimal-grid border-b border-line pt-28">
+    <div class="mx-auto grid max-w-7xl gap-12 px-4 pb-14 sm:px-6 lg:grid-cols-[1.05fr_.95fr] lg:px-8 2xl:max-w-[1500px] 2xl:grid-cols-[1.15fr_.85fr]">
+      <div class="flex flex-col justify-end">
+        <p class="mb-5 text-sm font-semibold uppercase tracking-[0.24em] text-muted">Clean wardrobe system</p>
+        <h1 class="max-w-3xl text-5xl font-extrabold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+          Your day, already styled.
+        </h1>
+        <p class="mt-6 max-w-2xl text-lg leading-8 text-neutral-600">
+          A minimal wardrobe dashboard for saving clothing, filtering essentials, and keeping outfit planning quiet, fast, and focused.
+        </p>
+
+        <div class="mt-8 flex flex-wrap gap-3">
+          <button id="hero-auth-btn" class="rounded border border-ink bg-ink px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-700">Open sign in</button>
+          <a href="#wardrobe" class="rounded border border-line bg-white px-5 py-3 text-sm font-semibold text-ink transition-colors hover:border-neutral-400">View wardrobe</a>
+        </div>
+      </div>
+
+      <div class="border border-line bg-white p-5 shadow-calm">
+        <div class="flex items-center justify-between border-b border-line pb-4">
+          <div>
+            <p class="text-sm font-semibold">Today</p>
+            <p class="mt-1 text-sm text-muted">Three simple choices</p>
+          </div>
+          <span class="rounded border border-line px-3 py-1 text-xs font-medium text-neutral-600">24°C</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 py-5">
+          <div id="hero-top-slot" class="flex aspect-[3/5] flex-col justify-end border border-line bg-neutral-50 p-3">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Top</p>
+          </div>
+          <div id="hero-bottom-slot" class="flex aspect-[3/5] flex-col justify-end border border-ink bg-white p-3">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Bottom</p>
+          </div>
+          <div id="hero-shoes-slot" class="flex aspect-[3/5] flex-col justify-end border border-line bg-neutral-50 p-3">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Shoes</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 border-t border-line pt-4 text-center">
+          <div>
+            <p class="text-2xl font-bold">24</p>
+            <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted">Items</p>
+          </div>
+          <div class="border-x border-line">
+            <p class="text-2xl font-bold">3</p>
+            <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted">Outfits</p>
+          </div>
+          <div>
+            <p class="text-2xl font-bold">1</p>
+            <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted">Flow</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="wardrobe" class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 2xl:max-w-[1500px]">
+      <div class="grid gap-8 xl:grid-cols-[1fr_400px] 2xl:grid-cols-[1fr_430px]">
+        <div class="space-y-8">
+          <section class="border border-line bg-white p-6 shadow-calm sm:p-8">
+            <div class="grid gap-8 md:grid-cols-[1fr_300px] md:items-center">
+              <div>
+                <p class="text-sm font-semibold uppercase tracking-[0.22em] text-muted">Smart wardrobe</p>
+                <h2 class="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Your closet, reduced to the useful parts.</h2>
+                <p class="mt-4 max-w-2xl leading-7 text-neutral-600">
+                  Store items in Supabase, browse by category, and keep the interface calm enough to use every morning.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 border border-line bg-paper p-3">
+                <div class="aspect-square border border-line bg-white"></div>
+                <div class="aspect-square border border-ink bg-white"></div>
+                <div class="aspect-square border border-line bg-white"></div>
+                <div class="aspect-square border border-line bg-white"></div>
+                <div class="aspect-square border border-line bg-white"></div>
+                <div class="aspect-square border border-ink bg-white"></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="outfits" class="border border-line bg-white p-6 shadow-calm sm:p-8">
+            <div class="mb-8 border border-line bg-paper p-5">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted">Daily outfit</p>
+                  <h3 class="mt-2 text-2xl font-bold tracking-tight">Suggest outfit</h3>
+                  <p class="mt-1 text-sm text-neutral-600">Pick one top, one bottom, and one pair of shoes from your wardrobe.</p>
+                </div>
+                <div class="grid gap-2 sm:min-w-72">
+                  <input id="outfit-prompt" type="text" placeholder="Outfit for coffee, work, gym..." class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+                  <div class="grid grid-cols-2 gap-2">
+                    <button id="build-outfit-btn" type="button" class="rounded border border-ink bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700">Build outfit</button>
+                    <button id="suggest-outfit-btn" type="button" class="rounded border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-neutral-400">Random</button>
+                  </div>
+                </div>
+              </div>
+              <div id="outfit-suggestion" class="mt-5 grid gap-3 sm:grid-cols-3">
+                <div class="border border-dashed border-line bg-white p-4 text-sm text-muted sm:col-span-3">Sign in and add tops, bottoms, and shoes to generate an outfit.</div>
+              </div>
+              <p id="outfit-message" class="mt-3 min-h-5 text-sm text-muted"></p>
+            </div>
+
+            <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h3 class="text-2xl font-bold tracking-tight">My wardrobe</h3>
+                <p class="mt-1 text-sm text-muted">Filter items and keep the list easy to scan.</p>
+              </div>
+              <div class="flex flex-wrap gap-2 text-sm">
+                <button class="filter-btn rounded border border-ink bg-ink px-4 py-2 font-medium text-white" data-filter="all">All</button>
+                <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="tops">Tops</button>
+                <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="bottoms">Bottoms</button>
+                <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="shoes">Shoes</button>
+              </div>
+            </div>
+            <div id="items-list" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div class="text-sm text-muted">No items loaded yet.</div>
+            </div>
+          </section>
+
+          <section id="insights" class="grid gap-4 md:grid-cols-3">
+            <div class="border border-line bg-white p-6">
+              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted">Focus</p>
+              <p class="mt-5 text-4xl font-bold">70%</p>
+              <p class="mt-2 text-sm leading-6 text-neutral-600">of your best looks come from repeatable basics.</p>
+            </div>
+            <div class="border border-ink bg-ink p-6 text-white">
+              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-neutral-300">Style score</p>
+              <p class="mt-5 text-4xl font-bold">A+</p>
+              <p class="mt-2 text-sm leading-6 text-neutral-300">Build around strong silhouettes and color balance.</p>
+            </div>
+            <div class="border border-line bg-white p-6">
+              <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted">Next move</p>
+              <p class="mt-5 text-4xl font-bold">+1</p>
+              <p class="mt-2 text-sm leading-6 text-neutral-600">Add one standout jacket or pair of shoes.</p>
+            </div>
+          </section>
+        </div>
+
+        <aside class="space-y-8 xl:sticky xl:top-24 xl:self-start">
+          <section id="add-item" class="border border-line bg-white p-6 shadow-calm sm:p-7">
+            <div class="mb-6">
+              <h3 class="text-2xl font-bold tracking-tight">Add item</h3>
+              <p class="mt-1 text-sm text-muted">Save clothing to Supabase.</p>
+            </div>
+            <div class="grid gap-3">
+              <input id="item-name" type="text" placeholder="Item name" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+              <select id="item-category" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+                <option value="">Category</option>
+                <option value="tops">Tops</option>
+                <option value="bottoms">Bottoms</option>
+                <option value="shoes">Shoes</option>
+                <option value="accessories">Accessories</option>
+                <option value="outerwear">Outerwear</option>
+              </select>
+              <input id="item-color" type="text" placeholder="Color" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+              <input id="item-image" type="url" placeholder="Image URL (optional)" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+              <input id="item-file" type="file" accept="image/*" class="w-full text-sm text-neutral-700 file:mr-4 file:rounded file:border file:border-line file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-ink hover:file:border-neutral-400">
+              <button id="add-item-btn" type="button" class="mt-1 rounded border border-ink bg-ink px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-700">Add item</button>
+              <p id="item-message" class="min-h-5 text-sm text-muted"></p>
+            </div>
+          </section>
+
+          <section class="border border-line bg-white p-6 shadow-calm sm:p-7">
+            <div class="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <h3 class="text-2xl font-bold tracking-tight">Account</h3>
+                <p class="mt-1 text-sm text-muted">Auth opens in a modal.</p>
+              </div>
+              <button id="open-auth-btn-inline" class="rounded border border-line bg-white px-4 py-2 text-sm font-semibold transition hover:border-neutral-400">Open</button>
+            </div>
+            <div id="session-box" class="hidden border border-line bg-paper p-4">
+              <p class="mb-1 text-sm text-muted">Signed in as</p>
+              <p id="session-email" class="break-words font-semibold text-ink"></p>
+            </div>
+            <button id="sign-out-btn" type="button" class="mt-4 hidden w-full rounded border border-line bg-white px-5 py-3 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400">Sign out</button>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="auth-modal" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm"></div>
+    <div class="relative flex min-h-full items-center justify-center p-4">
+      <div class="w-full max-w-md border border-line bg-white shadow-calm">
+        <div class="flex items-start justify-between gap-4 border-b border-line p-6">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted">Account access</p>
+            <h2 class="mt-3 text-3xl font-bold tracking-tight">Sign in</h2>
+            <p class="mt-2 text-sm text-neutral-600">Open this window when you need to log in.</p>
+          </div>
+          <button id="close-auth-btn" class="flex h-10 w-10 items-center justify-center rounded border border-line text-xl leading-none transition hover:border-neutral-400" aria-label="Close modal">&times;</button>
+        </div>
+
+        <div class="grid gap-3 p-6">
+          <input id="auth-email" type="email" placeholder="Email" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+          <input id="auth-password" type="password" placeholder="Password" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button id="sign-up-btn" type="button" class="rounded border border-line bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-neutral-400">Sign up</button>
+            <button id="sign-in-btn" type="button" class="rounded border border-ink bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700">Sign in</button>
+          </div>
+          <p id="auth-message" class="min-h-5 text-sm text-muted"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="edit-modal" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm"></div>
+    <div class="relative flex min-h-full items-center justify-center p-4">
+      <div class="w-full max-w-md border border-line bg-white shadow-calm">
+        <div class="flex items-start justify-between gap-4 border-b border-line p-6">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted">Wardrobe item</p>
+            <h2 class="mt-3 text-3xl font-bold tracking-tight">Edit item</h2>
+          </div>
+          <button id="close-edit-btn" class="flex h-10 w-10 items-center justify-center rounded border border-line text-xl leading-none transition hover:border-neutral-400" aria-label="Close edit modal">&times;</button>
+        </div>
+
+        <div class="grid gap-3 p-6">
+          <input id="edit-item-name" type="text" placeholder="Item name" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+          <select id="edit-item-category" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+            <option value="">Category</option>
+            <option value="tops">Tops</option>
+            <option value="bottoms">Bottoms</option>
+            <option value="shoes">Shoes</option>
+            <option value="accessories">Accessories</option>
+            <option value="outerwear">Outerwear</option>
+          </select>
+          <input id="edit-item-color" type="text" placeholder="Color" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+          <input id="edit-item-image" type="url" placeholder="Image URL (optional)" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button id="cancel-edit-btn" type="button" class="rounded border border-line bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-neutral-400">Cancel</button>
+            <button id="save-edit-btn" type="button" class="rounded border border-ink bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700">Save changes</button>
+          </div>
+          <p id="edit-message" class="min-h-5 text-sm text-muted"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-line bg-white">
+    <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm text-muted sm:px-6 md:flex-row lg:px-8 2xl:max-w-[1500px]">
+      <div class="font-semibold text-ink">SmartWardrobe</div>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const navbar = document.getElementById('navbar');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 10) {
+          navbar.classList.add('shadow-sm');
+        } else {
+          navbar.classList.remove('shadow-sm');
+        }
+      });
+
+      const menuBtn = document.getElementById('mobile-menu-btn');
+      const mobileMenu = document.getElementById('mobile-menu');
+      menuBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+      mobileMenu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => mobileMenu.classList.add('hidden')));
+
+      const authModal = document.getElementById('auth-modal');
+      const openAuthButtons = [
+        document.getElementById('open-auth-btn'),
+        document.getElementById('open-auth-btn-mobile'),
+        document.getElementById('open-auth-btn-inline'),
+        document.getElementById('hero-auth-btn')
+      ].filter(Boolean);
+      const closeAuthBtn = document.getElementById('close-auth-btn');
+
+      function openAuthModal() {
+        authModal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+      }
+      function closeAuthModal() {
+        authModal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+      }
+      openAuthButtons.forEach(btn => btn.addEventListener('click', openAuthModal));
+      closeAuthBtn.addEventListener('click', closeAuthModal);
+      authModal.addEventListener('click', (e) => {
+        if (e.target === authModal.firstElementChild) closeAuthModal();
+      });
+
+      const SUPABASE_URL = 'https://dloilrejmoasohdkwsle.supabase.co';
+      const SUPABASE_ANON_KEY = 'sb_publishable_Y-Y34sdi0_siJepLmU4big_uuv13H13';
+
+      if (!window.supabase || !window.supabase.createClient) {
+        alert('Supabase JS failed to load. Check the CDN script in <head>.');
+        return;
+      }
+
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      const authEmail = document.getElementById('auth-email');
+      const authPassword = document.getElementById('auth-password');
+      const signUpBtn = document.getElementById('sign-up-btn');
+      const signInBtn = document.getElementById('sign-in-btn');
+      const signOutBtn = document.getElementById('sign-out-btn');
+      const authMessage = document.getElementById('auth-message');
+      const sessionBox = document.getElementById('session-box');
+      const sessionEmail = document.getElementById('session-email');
+
+      const itemName = document.getElementById('item-name');
+      const itemCategory = document.getElementById('item-category');
+      const itemColor = document.getElementById('item-color');
+      const itemImage = document.getElementById('item-image');
+      const itemFile = document.getElementById('item-file');
+      const addItemBtn = document.getElementById('add-item-btn');
+      const itemMessage = document.getElementById('item-message');
+      const itemsList = document.getElementById('items-list');
+      const suggestOutfitBtn = document.getElementById('suggest-outfit-btn');
+      const buildOutfitBtn = document.getElementById('build-outfit-btn');
+      const outfitPrompt = document.getElementById('outfit-prompt');
+      const outfitSuggestion = document.getElementById('outfit-suggestion');
+      const outfitMessage = document.getElementById('outfit-message');
+      const heroTopSlot = document.getElementById('hero-top-slot');
+      const heroBottomSlot = document.getElementById('hero-bottom-slot');
+      const heroShoesSlot = document.getElementById('hero-shoes-slot');
+      const editModal = document.getElementById('edit-modal');
+      const closeEditBtn = document.getElementById('close-edit-btn');
+      const cancelEditBtn = document.getElementById('cancel-edit-btn');
+      const saveEditBtn = document.getElementById('save-edit-btn');
+      const editItemName = document.getElementById('edit-item-name');
+      const editItemCategory = document.getElementById('edit-item-category');
+      const editItemColor = document.getElementById('edit-item-color');
+      const editItemImage = document.getElementById('edit-item-image');
+      const editMessage = document.getElementById('edit-message');
+
+      let currentUser = null;
+      let wardrobeCache = [];
+      let activeFilter = 'all';
+      let editingItemId = null;
+
+      function setMessage(text, error = false) {
+        authMessage.textContent = text;
+        authMessage.className = error ? 'min-h-5 text-sm text-red-600' : 'min-h-5 text-sm text-muted';
+      }
+      function setItemMessage(text, error = false) {
+        itemMessage.textContent = text;
+        itemMessage.className = error ? 'min-h-5 text-sm text-red-600' : 'min-h-5 text-sm text-muted';
+      }
+      function setOutfitMessage(text, error = false) {
+        outfitMessage.textContent = text;
+        outfitMessage.className = error ? 'mt-3 min-h-5 text-sm text-red-600' : 'mt-3 min-h-5 text-sm text-muted';
+      }
+      function setEditMessage(text, error = false) {
+        editMessage.textContent = text;
+        editMessage.className = error ? 'min-h-5 text-sm text-red-600' : 'min-h-5 text-sm text-muted';
+      }
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;'
+        }[char]));
+      }
+      function formatCategory(category) {
+        const labels = {
+          tops: 'Tops',
+          bottoms: 'Bottoms',
+          shoes: 'Shoes',
+          accessories: 'Accessories',
+          outerwear: 'Outerwear'
+        };
+        return labels[category] || category || '';
+      }
+      function pickRandom(items) {
+        return items[Math.floor(Math.random() * items.length)];
+      }
+      function normalizeText(value) {
+        return String(value || '').toLowerCase();
+      }
+      function getPromptProfile(prompt) {
+        const text = normalizeText(prompt);
+        const profile = {
+          keywords: text.split(/[^a-zа-яё0-9]+/i).filter(Boolean),
+          preferredColors: [],
+          preferredWords: [],
+          message: prompt ? `Built for "${prompt}".` : 'Outfit ready.'
+        };
+
+        const colorWords = ['black', 'white', 'grey', 'gray', 'blue', 'navy', 'brown', 'green', 'red', 'beige', 'cream', 'черный', 'чёрный', 'белый', 'серый', 'синий'];
+        profile.preferredColors = colorWords.filter(color => text.includes(color));
+
+        if (/coffee|cafe|кофе|кафе/.test(text)) {
+          profile.preferredWords.push('shirt', 'sweater', 'polo', 'jeans', 'trousers', 'sneakers', 'loafers', 'рубаш', 'свитер', 'поло', 'джинс', 'брюк', 'кросс');
+          profile.preferredColors.push('black', 'white', 'navy', 'blue', 'grey', 'gray', 'черный', 'чёрный', 'белый', 'синий', 'серый');
+        }
+        if (/work|office|meeting|работ|офис|встреч/.test(text)) {
+          profile.preferredWords.push('shirt', 'blazer', 'trousers', 'loafers', 'coat', 'рубаш', 'пиджак', 'брюк', 'туфл');
+          profile.preferredColors.push('black', 'white', 'navy', 'grey', 'gray', 'черный', 'чёрный', 'белый', 'синий', 'серый');
+        }
+        if (/gym|sport|run|training|зал|спорт|трен/.test(text)) {
+          profile.preferredWords.push('tee', 't-shirt', 'hoodie', 'joggers', 'shorts', 'sneakers', 'футбол', 'худи', 'шорт', 'кросс');
+        }
+        if (/date|dinner|party|вечер|свидан|ужин|вечерин/.test(text)) {
+          profile.preferredWords.push('shirt', 'polo', 'blazer', 'trousers', 'boots', 'loafers', 'рубаш', 'поло', 'пиджак', 'брюк', 'ботин', 'туфл');
+          profile.preferredColors.push('black', 'white', 'navy', 'черный', 'чёрный', 'белый', 'синий');
+        }
+        if (/cold|winter|rain|холод|зим|дожд/.test(text)) {
+          profile.preferredWords.push('coat', 'jacket', 'hoodie', 'sweater', 'boots', 'пальто', 'куртк', 'худи', 'свитер', 'ботин');
+          profile.includeOuterwear = true;
+        }
+
+        return profile;
+      }
+      function scoreItem(item, profile) {
+        const haystack = normalizeText(`${item.item_name || ''} ${item.color || ''} ${item.category || ''}`);
+        let score = Math.random() * 0.2;
+
+        profile.keywords.forEach(word => {
+          if (word.length > 2 && haystack.includes(word)) score += 4;
+        });
+        profile.preferredWords.forEach(word => {
+          if (haystack.includes(word)) score += 3;
+        });
+        profile.preferredColors.forEach(color => {
+          if (haystack.includes(color)) score += 2;
+        });
+
+        return score;
+      }
+      function pickBest(items, profile) {
+        if (!items.length) return null;
+        return [...items].sort((a, b) => scoreItem(b, profile) - scoreItem(a, profile))[0];
+      }
+      function renderOutfitSlot(label, item) {
+        if (!item) {
+          return `
+            <div class="border border-dashed border-line bg-white p-4">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">${label}</p>
+              <p class="mt-4 text-sm text-muted">Missing item</p>
+            </div>
+          `;
+        }
+
+        const safeName = escapeHtml(item.item_name);
+        const safeColor = escapeHtml(item.color);
+        const safeImage = escapeHtml(item.image_url);
+
+        return `
+          <article class="border border-line bg-white p-4">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">${label}</p>
+            ${safeImage ? `<img src="${safeImage}" alt="${safeName}" class="mt-4 aspect-square w-full border border-line bg-paper object-cover">` : `<div class="mt-4 flex aspect-square w-full items-center justify-center border border-dashed border-line bg-paper text-xs text-muted">No image</div>`}
+            <p class="mt-3 truncate text-sm font-semibold text-ink">${safeName}</p>
+            <p class="mt-1 min-h-4 text-xs text-neutral-500">${safeColor}</p>
+          </article>
+        `;
+      }
+      function renderHeroOutfitSlot(label, item) {
+        if (!item) {
+          return `<p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">${label}</p>`;
+        }
+
+        const safeName = escapeHtml(item.item_name);
+        const safeColor = escapeHtml(item.color);
+        const safeImage = escapeHtml(item.image_url);
+
+        return `
+          <div class="flex h-full flex-col justify-between gap-2">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">${label}</p>
+            ${safeImage ? `<img src="${safeImage}" alt="${safeName}" class="min-h-0 flex-1 object-contain">` : `<div class="flex min-h-0 flex-1 items-center justify-center border border-dashed border-line text-[10px] text-muted">No image</div>`}
+            <div>
+              <p class="truncate text-xs font-semibold text-ink">${safeName}</p>
+              <p class="truncate text-[11px] text-muted">${safeColor}</p>
+            </div>
+          </div>
+        `;
+      }
+      function updateHeroOutfit(top, bottom, shoes) {
+        heroTopSlot.innerHTML = renderHeroOutfitSlot('Top', top);
+        heroBottomSlot.innerHTML = renderHeroOutfitSlot('Bottom', bottom);
+        heroShoesSlot.innerHTML = renderHeroOutfitSlot('Shoes', shoes);
+      }
+      function resetHeroOutfit() {
+        updateHeroOutfit(null, null, null);
+      }
+      function buildOutfit(prompt = '') {
+        if (!currentUser) {
+          setOutfitMessage('Please sign in first.', true);
+          outfitSuggestion.innerHTML = '<div class="border border-dashed border-line bg-white p-4 text-sm text-muted sm:col-span-3">Sign in to generate an outfit.</div>';
+          resetHeroOutfit();
+          return;
+        }
+
+        const profile = getPromptProfile(prompt);
+        const tops = wardrobeCache.filter(item => item.category === 'tops');
+        const bottoms = wardrobeCache.filter(item => item.category === 'bottoms');
+        const shoes = wardrobeCache.filter(item => item.category === 'shoes');
+        const missing = [];
+        if (!tops.length) missing.push('tops');
+        if (!bottoms.length) missing.push('bottoms');
+        if (!shoes.length) missing.push('shoes');
+
+        const selectedTop = prompt ? pickBest(tops, profile) : pickRandom(tops);
+        const selectedBottom = prompt ? pickBest(bottoms, profile) : pickRandom(bottoms);
+        const selectedShoes = prompt ? pickBest(shoes, profile) : pickRandom(shoes);
+
+        outfitSuggestion.innerHTML = [
+          renderOutfitSlot('Top', selectedTop),
+          renderOutfitSlot('Bottom', selectedBottom),
+          renderOutfitSlot('Shoes', selectedShoes)
+        ].join('');
+        updateHeroOutfit(selectedTop, selectedBottom, selectedShoes);
+
+        if (missing.length) {
+          setOutfitMessage(`Add ${missing.join(', ')} to complete outfit suggestions.`, true);
+          return;
+        }
+
+        setOutfitMessage(profile.message);
+      }
+      function suggestOutfit() {
+        buildOutfit('');
+      }
+      function openEditModal(item) {
+        editingItemId = item.id;
+        editItemName.value = item.item_name || '';
+        editItemCategory.value = item.category || '';
+        editItemColor.value = item.color || '';
+        editItemImage.value = item.image_url || '';
+        setEditMessage('');
+        editModal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+      }
+      function closeEditModal() {
+        editingItemId = null;
+        editModal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+      }
+
+      closeEditBtn.addEventListener('click', closeEditModal);
+      cancelEditBtn.addEventListener('click', closeEditModal);
+      editModal.addEventListener('click', (e) => {
+        if (e.target === editModal.firstElementChild) closeEditModal();
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeAuthModal();
+          closeEditModal();
+        }
+      });
+
+      function setLoggedInUI(user) {
+        currentUser = user || null;
+        if (user) {
+          sessionBox.classList.remove('hidden');
+          signOutBtn.classList.remove('hidden');
+          sessionEmail.textContent = user.email || 'Unknown user';
+        } else {
+          sessionBox.classList.add('hidden');
+          signOutBtn.classList.add('hidden');
+          sessionEmail.textContent = '';
+          wardrobeCache = [];
+          outfitSuggestion.innerHTML = '<div class="border border-dashed border-line bg-white p-4 text-sm text-muted sm:col-span-3">Sign in and add tops, bottoms, and shoes to generate an outfit.</div>';
+          setOutfitMessage('');
+          resetHeroOutfit();
+          renderItems();
+        }
+      }
+
+      function getFilteredItems() {
+        if (activeFilter === 'all') return wardrobeCache;
+        return wardrobeCache.filter(item => (item.category || '').toLowerCase().includes(activeFilter));
+      }
+
+      function renderItems() {
+        const items = getFilteredItems();
+        itemsList.innerHTML = '';
+
+        if (!currentUser) {
+          itemsList.innerHTML = '<div class="text-sm text-muted">Please sign in to view your wardrobe.</div>';
+          return;
+        }
+        if (!items.length) {
+          itemsList.innerHTML = '<div class="text-sm text-muted">No items yet.</div>';
+          return;
+        }
+
+        items.forEach(item => {
+          const card = document.createElement('article');
+          card.className = 'border border-line bg-white p-4 transition hover:border-neutral-400';
+          const safeName = escapeHtml(item.item_name);
+          const safeCategory = escapeHtml(formatCategory(item.category));
+          const safeColor = escapeHtml(item.color);
+          const safeImage = escapeHtml(item.image_url);
+
+          card.innerHTML = `
+            <div class="flex items-start gap-4">
+              ${safeImage ? `<img src="${safeImage}" alt="${safeName}" class="h-20 w-20 shrink-0 border border-line bg-paper object-cover">` : `<div class="flex h-20 w-20 shrink-0 items-center justify-center border border-dashed border-line bg-paper px-2 text-center text-xs text-muted">No image</div>`}
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-base font-semibold text-ink">${safeName}</div>
+                <div class="text-sm text-muted">${safeCategory}</div>
+                <div class="mt-2 min-h-4 text-xs text-neutral-500">${safeColor}</div>
+                <div class="mt-4 flex gap-2">
+                  <button type="button" class="edit-item-btn rounded border border-line bg-white px-3 py-2 text-xs font-semibold text-ink transition hover:border-neutral-400" data-id="${item.id}">Edit</button>
+                  <button type="button" class="delete-item-btn rounded border border-line bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:border-red-300" data-id="${item.id}">Delete</button>
+                </div>
+              </div>
+            </div>
+          `;
+          itemsList.appendChild(card);
+        });
+      }
+
+      async function uploadItemImage(file, userId) {
+        const fileExt = file.name.split('.').pop() || 'jpg';
+        const filePath = `${userId}/${crypto.randomUUID()}.${fileExt}`;
+        const { data, error } = await supabase.storage.from('wardrobe-images').upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+        if (error) throw error;
+        const { data: publicData } = supabase.storage.from('wardrobe-images').getPublicUrl(data.path);
+        return publicData.publicUrl;
+      }
+
+      async function loadItems() {
+        if (!currentUser) return;
+        const { data, error } = await supabase
+          .from('wardrobe_items')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false });
+        if (error) {
+          setItemMessage(error.message, true);
+          return;
+        }
+        wardrobeCache = data || [];
+        renderItems();
+      }
+
+      async function refreshSession() {
+        const { data } = await supabase.auth.getSession();
+        setLoggedInUI(data.session?.user ?? null);
+        if (data.session?.user) await loadItems();
+      }
+
+      signUpBtn.addEventListener('click', async () => {
+        const email = authEmail.value.trim();
+        const password = authPassword.value;
+        if (!email || !password) {
+          setMessage('Enter email and password.', true);
+          return;
+        }
+        setMessage('Creating account...');
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) {
+          setMessage(error.message, true);
+          return;
+        }
+        setMessage(data.user ? 'Account created. You can sign in now.' : 'Check your email to confirm your account.');
+      });
+
+      signInBtn.addEventListener('click', async () => {
+        const email = authEmail.value.trim();
+        const password = authPassword.value;
+        if (!email || !password) {
+          setMessage('Enter email and password.', true);
+          return;
+        }
+        setMessage('Signing in...');
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          setMessage(error.message, true);
+          return;
+        }
+        setMessage('Welcome back!');
+        setLoggedInUI(data.session?.user ?? null);
+        closeAuthModal();
+        await loadItems();
+      });
+
+      signOutBtn.addEventListener('click', async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          setMessage(error.message, true);
+          return;
+        }
+        authEmail.value = '';
+        authPassword.value = '';
+        setMessage('Signed out.');
+        setLoggedInUI(null);
+      });
+
+      addItemBtn.addEventListener('click', async () => {
+        if (!currentUser) {
+          setItemMessage('Please sign in first.', true);
+          return;
+        }
+
+        const name = itemName.value.trim();
+        const category = itemCategory.value.trim();
+        const color = itemColor.value.trim();
+        const image_url = itemImage.value.trim();
+        const image_file = itemFile.files[0] || null;
+
+        if (!name || !category) {
+          setItemMessage('Fill item name and category.', true);
+          return;
+        }
+
+        setItemMessage('Saving item...');
+
+        let finalImageUrl = image_url || null;
+        if (image_file) {
+          try {
+            finalImageUrl = await uploadItemImage(image_file, currentUser.id);
+          } catch (uploadError) {
+            const message = uploadError.message === 'Bucket not found'
+              ? 'Storage bucket "wardrobe-images" was not found. Create it in Supabase or add the item without a file.'
+              : uploadError.message?.toLowerCase().includes('row-level security')
+                ? 'Photo upload is blocked by Storage RLS. Add upload/read policies for the "wardrobe-images" bucket in Supabase.'
+              : uploadError.message || 'Image upload failed.';
+            setItemMessage(message, true);
+            return;
+          }
+        }
+
+        const { error } = await supabase.from('wardrobe_items').insert([{
+          user_id: currentUser.id,
+          item_name: name,
+          category,
+          color: color || null,
+          image_url: finalImageUrl
+        }]);
+
+        if (error) {
+          setItemMessage(error.message, true);
+          return;
+        }
+
+        itemName.value = '';
+        itemCategory.value = '';
+        itemColor.value = '';
+        itemImage.value = '';
+        itemFile.value = '';
+        setItemMessage('Item saved.');
+        await loadItems();
+      });
+
+      itemsList.addEventListener('click', async (event) => {
+        const editButton = event.target.closest('.edit-item-btn');
+        const deleteButton = event.target.closest('.delete-item-btn');
+
+        if (editButton) {
+          const itemId = Number(editButton.dataset.id);
+          const item = wardrobeCache.find(entry => entry.id === itemId);
+          if (item) openEditModal(item);
+          return;
+        }
+
+        if (deleteButton) {
+          const itemId = Number(deleteButton.dataset.id);
+          const item = wardrobeCache.find(entry => entry.id === itemId);
+          if (!item || !window.confirm(`Delete "${item.item_name}"?`)) return;
+
+          setItemMessage('Deleting item...');
+          const { error } = await supabase
+            .from('wardrobe_items')
+            .delete()
+            .eq('id', itemId)
+            .eq('user_id', currentUser.id);
+
+          if (error) {
+            setItemMessage(error.message, true);
+            return;
+          }
+
+          setItemMessage('Item deleted.');
+          await loadItems();
+        }
+      });
+
+      saveEditBtn.addEventListener('click', async () => {
+        if (!currentUser || !editingItemId) {
+          setEditMessage('No item selected.', true);
+          return;
+        }
+
+        const name = editItemName.value.trim();
+        const category = editItemCategory.value.trim();
+        const color = editItemColor.value.trim();
+        const image_url = editItemImage.value.trim();
+
+        if (!name || !category) {
+          setEditMessage('Fill item name and category.', true);
+          return;
+        }
+
+        setEditMessage('Saving changes...');
+        const { error } = await supabase
+          .from('wardrobe_items')
+          .update({
+            item_name: name,
+            category,
+            color: color || null,
+            image_url: image_url || null
+          })
+          .eq('id', editingItemId)
+          .eq('user_id', currentUser.id);
+
+        if (error) {
+          setEditMessage(error.message, true);
+          return;
+        }
+
+        closeEditModal();
+        setItemMessage('Item updated.');
+        await loadItems();
+      });
+
+      suggestOutfitBtn.addEventListener('click', suggestOutfit);
+      buildOutfitBtn.addEventListener('click', () => buildOutfit(outfitPrompt.value.trim()));
+      outfitPrompt.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') buildOutfit(outfitPrompt.value.trim());
+      });
+
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('border-ink', 'bg-ink', 'text-white');
+            b.classList.add('border-line', 'bg-white', 'text-neutral-700');
+          });
+          btn.classList.add('border-ink', 'bg-ink', 'text-white');
+          btn.classList.remove('border-line', 'bg-white', 'text-neutral-700');
+          activeFilter = btn.dataset.filter;
+          renderItems();
+        });
+      });
+
+      supabase.auth.onAuthStateChange((_event, session) => {
+        setLoggedInUI(session?.user ?? null);
+        if (session?.user) loadItems();
+      });
+
+      refreshSession();
+    });
+  </script>
+</body>
+</html>
