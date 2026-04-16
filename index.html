@@ -195,9 +195,16 @@
                 </div>
                 <div class="grid gap-2 sm:min-w-72">
                   <input id="outfit-prompt" type="text" placeholder="Outfit for coffee, work, gym..." class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
-                  <div class="grid grid-cols-2 gap-2">
+                  <select id="weather-select" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+                    <option value="mild">Mild weather</option>
+                    <option value="warm">Warm day</option>
+                    <option value="cold">Cold day</option>
+                    <option value="rain">Rainy day</option>
+                  </select>
+                  <div class="grid grid-cols-3 gap-2">
                     <button id="build-outfit-btn" type="button" class="rounded border border-ink bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700">Build outfit</button>
                     <button id="suggest-outfit-btn" type="button" class="rounded border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-neutral-400">Random</button>
+                    <button id="save-outfit-btn" type="button" class="rounded border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-neutral-400">Save</button>
                   </div>
                 </div>
               </div>
@@ -205,6 +212,18 @@
                 <div class="border border-dashed border-line bg-white p-4 text-sm text-muted sm:col-span-3">Sign in and add tops, bottoms, and shoes to generate an outfit.</div>
               </div>
               <p id="outfit-message" class="mt-3 min-h-5 text-sm text-muted"></p>
+              <div class="mt-6 border-t border-line pt-5">
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted">Saved outfits</p>
+                    <p class="mt-1 text-sm text-neutral-600">Keep combinations you want to wear again.</p>
+                  </div>
+                  <span id="saved-outfit-count" class="rounded border border-line bg-white px-3 py-1 text-xs font-semibold text-muted">0</span>
+                </div>
+                <div id="saved-outfits-list" class="mt-4 grid gap-3 lg:grid-cols-2">
+                  <div class="border border-dashed border-line bg-white p-4 text-sm text-muted">No saved outfits yet.</div>
+                </div>
+              </div>
             </div>
 
             <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -215,10 +234,10 @@
               <div class="grid gap-2 md:min-w-[420px]">
                 <input id="wardrobe-search" type="search" placeholder="Search wardrobe..." class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
                 <div class="flex flex-wrap gap-2 text-sm md:justify-end">
-                  <button class="filter-btn rounded border border-ink bg-ink px-4 py-2 font-medium text-white" data-filter="all">All</button>
-                  <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="tops">Tops</button>
-                  <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="bottoms">Bottoms</button>
-                  <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="shoes">Shoes</button>
+                  <button class="filter-btn rounded border border-ink bg-ink px-4 py-2 font-medium text-white" data-filter="all">All <span id="filter-count-all">0</span></button>
+                  <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="tops">Tops <span id="filter-count-tops">0</span></button>
+                  <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="bottoms">Bottoms <span id="filter-count-bottoms">0</span></button>
+                  <button class="filter-btn rounded border border-line bg-white px-4 py-2 font-medium text-neutral-700" data-filter="shoes">Shoes <span id="filter-count-shoes">0</span></button>
                 </div>
               </div>
             </div>
@@ -339,11 +358,29 @@
           </select>
           <input id="edit-item-color" type="text" placeholder="Color" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
           <input id="edit-item-image" type="url" placeholder="Image URL (optional)" class="w-full rounded border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-ink">
+          <input id="edit-item-file" type="file" accept="image/*" class="w-full text-sm text-neutral-700 file:mr-4 file:rounded file:border file:border-line file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-ink hover:file:border-neutral-400">
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button id="cancel-edit-btn" type="button" class="rounded border border-line bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-neutral-400">Cancel</button>
             <button id="save-edit-btn" type="button" class="rounded border border-ink bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700">Save changes</button>
           </div>
           <p id="edit-message" class="min-h-5 text-sm text-muted"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-modal" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-ink/40 backdrop-blur-sm"></div>
+    <div class="relative flex min-h-full items-center justify-center p-4">
+      <div class="w-full max-w-md border border-line bg-white shadow-calm">
+        <div class="border-b border-line p-6">
+          <p class="text-xs font-semibold uppercase tracking-[0.22em] text-muted">Delete item</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight">Remove from wardrobe?</h2>
+          <p id="delete-message" class="mt-3 text-sm leading-6 text-neutral-600">This item will be removed from your wardrobe.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-3 p-6 sm:grid-cols-2">
+          <button id="cancel-delete-btn" type="button" class="rounded border border-line bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-neutral-400">Cancel</button>
+          <button id="confirm-delete-btn" type="button" class="rounded border border-red-600 bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700">Delete</button>
         </div>
       </div>
     </div>
@@ -424,12 +461,20 @@
       const wardrobeSearch = document.getElementById('wardrobe-search');
       const suggestOutfitBtn = document.getElementById('suggest-outfit-btn');
       const buildOutfitBtn = document.getElementById('build-outfit-btn');
+      const saveOutfitBtn = document.getElementById('save-outfit-btn');
       const outfitPrompt = document.getElementById('outfit-prompt');
+      const weatherSelect = document.getElementById('weather-select');
       const outfitSuggestion = document.getElementById('outfit-suggestion');
       const outfitMessage = document.getElementById('outfit-message');
+      const savedOutfitsList = document.getElementById('saved-outfits-list');
+      const savedOutfitCount = document.getElementById('saved-outfit-count');
       const totalItemsStat = document.getElementById('total-items-stat');
       const outfitCombosStat = document.getElementById('outfit-combos-stat');
       const photoItemsStat = document.getElementById('photo-items-stat');
+      const filterCountAll = document.getElementById('filter-count-all');
+      const filterCountTops = document.getElementById('filter-count-tops');
+      const filterCountBottoms = document.getElementById('filter-count-bottoms');
+      const filterCountShoes = document.getElementById('filter-count-shoes');
       const heroTopSlot = document.getElementById('hero-top-slot');
       const heroBottomSlot = document.getElementById('hero-bottom-slot');
       const heroShoesSlot = document.getElementById('hero-shoes-slot');
@@ -441,13 +486,21 @@
       const editItemCategory = document.getElementById('edit-item-category');
       const editItemColor = document.getElementById('edit-item-color');
       const editItemImage = document.getElementById('edit-item-image');
+      const editItemFile = document.getElementById('edit-item-file');
       const editMessage = document.getElementById('edit-message');
+      const deleteModal = document.getElementById('delete-modal');
+      const deleteMessage = document.getElementById('delete-message');
+      const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+      const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 
       let currentUser = null;
       let wardrobeCache = [];
       let activeFilter = 'all';
       let activeSearch = '';
       let editingItemId = null;
+      let pendingDeleteId = null;
+      let currentOutfit = null;
+      let savedOutfits = [];
 
       function setMessage(text, error = false) {
         authMessage.textContent = text;
@@ -502,6 +555,69 @@
         totalItemsStat.textContent = formatStat(wardrobeCache.length);
         outfitCombosStat.textContent = formatStat(tops * bottoms * shoes);
         photoItemsStat.textContent = formatStat(photos);
+        filterCountAll.textContent = formatStat(wardrobeCache.length);
+        filterCountTops.textContent = formatStat(tops);
+        filterCountBottoms.textContent = formatStat(bottoms);
+        filterCountShoes.textContent = formatStat(shoes);
+      }
+      function getSavedOutfitsKey() {
+        return currentUser ? `smartwardrobe:saved-outfits:${currentUser.id}` : null;
+      }
+      function loadSavedOutfits() {
+        const key = getSavedOutfitsKey();
+        if (!key) {
+          savedOutfits = [];
+          renderSavedOutfits();
+          return;
+        }
+
+        try {
+          savedOutfits = JSON.parse(localStorage.getItem(key) || '[]');
+        } catch (_error) {
+          savedOutfits = [];
+        }
+        renderSavedOutfits();
+      }
+      function persistSavedOutfits() {
+        const key = getSavedOutfitsKey();
+        if (key) localStorage.setItem(key, JSON.stringify(savedOutfits));
+      }
+      function renderSavedOutfits() {
+        savedOutfitCount.textContent = formatStat(savedOutfits.length);
+        savedOutfitsList.innerHTML = '';
+
+        if (!currentUser) {
+          savedOutfitsList.innerHTML = '<div class="border border-dashed border-line bg-white p-4 text-sm text-muted">Sign in to save outfits.</div>';
+          return;
+        }
+
+        if (!savedOutfits.length) {
+          savedOutfitsList.innerHTML = '<div class="border border-dashed border-line bg-white p-4 text-sm text-muted">No saved outfits yet.</div>';
+          return;
+        }
+
+        savedOutfits.forEach(outfit => {
+          const card = document.createElement('article');
+          card.className = 'border border-line bg-white p-4';
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-ink">${escapeHtml(outfit.title)}</p>
+                <p class="mt-1 text-xs text-muted">${escapeHtml(outfit.weatherLabel || 'Mild weather')}</p>
+              </div>
+              <div class="flex shrink-0 gap-2">
+                <button type="button" class="wear-saved-outfit-btn rounded border border-ink bg-ink px-3 py-2 text-xs font-semibold text-white transition hover:bg-neutral-700" data-id="${outfit.id}">Wear</button>
+                <button type="button" class="remove-saved-outfit-btn rounded border border-line bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:border-red-300" data-id="${outfit.id}">Remove</button>
+              </div>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-2 text-xs text-neutral-600">
+              <div class="truncate border border-line p-2">${escapeHtml(outfit.top?.item_name || 'Top')}</div>
+              <div class="truncate border border-line p-2">${escapeHtml(outfit.bottom?.item_name || 'Bottom')}</div>
+              <div class="truncate border border-line p-2">${escapeHtml(outfit.shoes?.item_name || 'Shoes')}</div>
+            </div>
+          `;
+          savedOutfitsList.appendChild(card);
+        });
       }
       function getPromptProfile(prompt) {
         const text = normalizeText(prompt);
@@ -535,6 +651,29 @@
           profile.includeOuterwear = true;
         }
 
+        return profile;
+      }
+      function getWeatherLabel(value) {
+        const labels = {
+          mild: 'Mild weather',
+          warm: 'Warm day',
+          cold: 'Cold day',
+          rain: 'Rainy day'
+        };
+        return labels[value] || labels.mild;
+      }
+      function applyWeatherToProfile(profile, weather) {
+        if (weather === 'warm') {
+          profile.preferredWords.push('tee', 't-shirt', 'polo', 'shirt', 'shorts', 'футбол', 'поло', 'рубаш', 'шорт');
+          profile.preferredColors.push('white', 'blue', 'beige', 'cream', 'белый', 'синий');
+        }
+        if (weather === 'cold') {
+          profile.preferredWords.push('sweater', 'hoodie', 'jacket', 'coat', 'boots', 'свитер', 'худи', 'куртк', 'пальто', 'ботин');
+        }
+        if (weather === 'rain') {
+          profile.preferredWords.push('jacket', 'coat', 'boots', 'куртк', 'пальто', 'ботин');
+          profile.preferredColors.push('black', 'navy', 'grey', 'gray', 'черный', 'чёрный', 'синий', 'серый');
+        }
         return profile;
       }
       function scoreItem(item, profile) {
@@ -616,7 +755,8 @@
           return;
         }
 
-        const profile = getPromptProfile(prompt);
+        const weather = weatherSelect.value;
+        const profile = applyWeatherToProfile(getPromptProfile(prompt), weather);
         const tops = wardrobeCache.filter(item => item.category === 'tops');
         const bottoms = wardrobeCache.filter(item => item.category === 'bottoms');
         const shoes = wardrobeCache.filter(item => item.category === 'shoes');
@@ -635,16 +775,74 @@
           renderOutfitSlot('Shoes', selectedShoes)
         ].join('');
         updateHeroOutfit(selectedTop, selectedBottom, selectedShoes);
+        currentOutfit = {
+          top: selectedTop,
+          bottom: selectedBottom,
+          shoes: selectedShoes,
+          prompt,
+          weather,
+          weatherLabel: getWeatherLabel(weather)
+        };
 
         if (missing.length) {
           setOutfitMessage(`Add ${missing.join(', ')} to complete outfit suggestions.`, true);
           return;
         }
 
-        setOutfitMessage(profile.message);
+        setOutfitMessage(`${profile.message} ${getWeatherLabel(weather)}.`);
       }
       function suggestOutfit() {
         buildOutfit('');
+      }
+      function saveCurrentOutfit() {
+        if (!currentUser) {
+          setOutfitMessage('Please sign in first.', true);
+          return;
+        }
+        if (!currentOutfit?.top || !currentOutfit?.bottom || !currentOutfit?.shoes) {
+          setOutfitMessage('Build a complete outfit before saving.', true);
+          return;
+        }
+
+        const title = currentOutfit.prompt
+          ? `Outfit for ${currentOutfit.prompt}`
+          : `Saved outfit ${savedOutfits.length + 1}`;
+
+        savedOutfits.unshift({
+          id: crypto.randomUUID(),
+          title,
+          weather: currentOutfit.weather,
+          weatherLabel: currentOutfit.weatherLabel,
+          top: currentOutfit.top,
+          bottom: currentOutfit.bottom,
+          shoes: currentOutfit.shoes,
+          createdAt: new Date().toISOString()
+        });
+        savedOutfits = savedOutfits.slice(0, 12);
+        persistSavedOutfits();
+        renderSavedOutfits();
+        setOutfitMessage('Outfit saved.');
+      }
+      function wearSavedOutfit(outfit) {
+        currentOutfit = {
+          top: outfit.top,
+          bottom: outfit.bottom,
+          shoes: outfit.shoes,
+          prompt: outfit.title?.replace(/^Outfit for /, '') || '',
+          weather: outfit.weather || 'mild',
+          weatherLabel: outfit.weatherLabel || getWeatherLabel(outfit.weather || 'mild')
+        };
+
+        weatherSelect.value = currentOutfit.weather;
+        outfitPrompt.value = currentOutfit.prompt.startsWith('Saved outfit') ? '' : currentOutfit.prompt;
+        outfitSuggestion.innerHTML = [
+          renderOutfitSlot('Top', currentOutfit.top),
+          renderOutfitSlot('Bottom', currentOutfit.bottom),
+          renderOutfitSlot('Shoes', currentOutfit.shoes)
+        ].join('');
+        updateHeroOutfit(currentOutfit.top, currentOutfit.bottom, currentOutfit.shoes);
+        setOutfitMessage(`Wearing saved outfit. ${currentOutfit.weatherLabel}.`);
+        document.getElementById('outfits').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
       function openEditModal(item) {
         editingItemId = item.id;
@@ -652,13 +850,26 @@
         editItemCategory.value = item.category || '';
         editItemColor.value = item.color || '';
         editItemImage.value = item.image_url || '';
+        editItemFile.value = '';
         setEditMessage('');
         editModal.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
       }
       function closeEditModal() {
         editingItemId = null;
+        editItemFile.value = '';
         editModal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+      }
+      function openDeleteModal(item) {
+        pendingDeleteId = item.id;
+        deleteMessage.textContent = `Delete "${item.item_name}" from your wardrobe?`;
+        deleteModal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+      }
+      function closeDeleteModal() {
+        pendingDeleteId = null;
+        deleteModal.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
       }
 
@@ -667,10 +878,15 @@
       editModal.addEventListener('click', (e) => {
         if (e.target === editModal.firstElementChild) closeEditModal();
       });
+      cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+      deleteModal.addEventListener('click', (e) => {
+        if (e.target === deleteModal.firstElementChild) closeDeleteModal();
+      });
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           closeAuthModal();
           closeEditModal();
+          closeDeleteModal();
         }
       });
 
@@ -680,17 +896,21 @@
           sessionBox.classList.remove('hidden');
           signOutBtn.classList.remove('hidden');
           sessionEmail.textContent = user.email || 'Unknown user';
+          loadSavedOutfits();
         } else {
           sessionBox.classList.add('hidden');
           signOutBtn.classList.add('hidden');
           sessionEmail.textContent = '';
           wardrobeCache = [];
+          savedOutfits = [];
+          currentOutfit = null;
           activeSearch = '';
           wardrobeSearch.value = '';
           outfitSuggestion.innerHTML = '<div class="border border-dashed border-line bg-white p-4 text-sm text-muted sm:col-span-3">Sign in and add tops, bottoms, and shoes to generate an outfit.</div>';
           setOutfitMessage('');
           resetHeroOutfit();
           updateStats();
+          renderSavedOutfits();
           renderItems();
         }
       }
@@ -715,7 +935,13 @@
         if (!items.length) {
           itemsList.innerHTML = activeSearch
             ? '<div class="text-sm text-muted">No matching items.</div>'
-            : '<div class="text-sm text-muted">No items yet.</div>';
+            : `
+              <div class="border border-dashed border-line bg-paper p-6 sm:col-span-2 xl:col-span-3 2xl:col-span-4">
+                <p class="text-sm font-semibold text-ink">Your wardrobe is empty.</p>
+                <p class="mt-2 text-sm leading-6 text-neutral-600">Add your first item with a name, category, color, and photo. Then the outfit builder can start making combinations.</p>
+                <button type="button" class="empty-add-btn mt-4 rounded border border-ink bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700">Add first item</button>
+              </div>
+            `;
           return;
         }
 
@@ -896,6 +1122,13 @@
       itemsList.addEventListener('click', async (event) => {
         const editButton = event.target.closest('.edit-item-btn');
         const deleteButton = event.target.closest('.delete-item-btn');
+        const emptyAddButton = event.target.closest('.empty-add-btn');
+
+        if (emptyAddButton) {
+          document.getElementById('add-item').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          itemName.focus();
+          return;
+        }
 
         if (editButton) {
           const itemId = Number(editButton.dataset.id);
@@ -907,25 +1140,35 @@
         if (deleteButton) {
           const itemId = Number(deleteButton.dataset.id);
           const item = wardrobeCache.find(entry => entry.id === itemId);
-          if (!item || !window.confirm(`Delete "${item.item_name}"?`)) return;
-
-          setItemMessage('Deleting item...');
-          const imageDeleteError = await deleteItemImage(item.image_url);
-          const { error } = await supabase
-            .from('wardrobe_items')
-            .delete()
-            .eq('id', itemId)
-            .eq('user_id', currentUser.id);
-
-          if (error) {
-            setItemMessage(error.message, true);
-            return;
-          }
-
-          setItemMessage(imageDeleteError ? 'Item deleted. Image cleanup was blocked by Storage policy.' : 'Item deleted.');
-          resetHeroOutfit();
-          await loadItems();
+          if (item) openDeleteModal(item);
         }
+      });
+
+      confirmDeleteBtn.addEventListener('click', async () => {
+        const item = wardrobeCache.find(entry => entry.id === pendingDeleteId);
+        if (!item) {
+          closeDeleteModal();
+          return;
+        }
+
+        setItemMessage('Deleting item...');
+        const imageDeleteError = await deleteItemImage(item.image_url);
+        const { error } = await supabase
+          .from('wardrobe_items')
+          .delete()
+          .eq('id', item.id)
+          .eq('user_id', currentUser.id);
+
+        if (error) {
+          setItemMessage(error.message, true);
+          return;
+        }
+
+        closeDeleteModal();
+        setItemMessage(imageDeleteError ? 'Item deleted. Image cleanup was blocked by Storage policy.' : 'Item deleted.');
+        currentOutfit = null;
+        resetHeroOutfit();
+        await loadItems();
       });
 
       saveEditBtn.addEventListener('click', async () => {
@@ -938,6 +1181,8 @@
         const category = editItemCategory.value.trim();
         const color = editItemColor.value.trim();
         const image_url = editItemImage.value.trim();
+        const image_file = editItemFile.files[0] || null;
+        const existingItem = wardrobeCache.find(item => item.id === editingItemId);
 
         if (!name || !category) {
           setEditMessage('Fill item name and category.', true);
@@ -945,13 +1190,27 @@
         }
 
         setEditMessage('Saving changes...');
+        let finalImageUrl = image_url || null;
+        if (image_file) {
+          try {
+            finalImageUrl = await uploadItemImage(image_file, currentUser.id);
+            if (existingItem?.image_url) await deleteItemImage(existingItem.image_url);
+          } catch (uploadError) {
+            const message = uploadError.message?.toLowerCase().includes('row-level security')
+              ? 'Photo upload is blocked by Storage RLS.'
+              : uploadError.message || 'Image upload failed.';
+            setEditMessage(message, true);
+            return;
+          }
+        }
+
         const { error } = await supabase
           .from('wardrobe_items')
           .update({
             item_name: name,
             category,
             color: color || null,
-            image_url: image_url || null
+            image_url: finalImageUrl
           })
           .eq('id', editingItemId)
           .eq('user_id', currentUser.id);
@@ -968,8 +1227,26 @@
 
       suggestOutfitBtn.addEventListener('click', suggestOutfit);
       buildOutfitBtn.addEventListener('click', () => buildOutfit(outfitPrompt.value.trim()));
+      saveOutfitBtn.addEventListener('click', saveCurrentOutfit);
       outfitPrompt.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') buildOutfit(outfitPrompt.value.trim());
+      });
+      weatherSelect.addEventListener('change', () => {
+        if (currentOutfit) buildOutfit(outfitPrompt.value.trim());
+      });
+      savedOutfitsList.addEventListener('click', (event) => {
+        const wearButton = event.target.closest('.wear-saved-outfit-btn');
+        const removeButton = event.target.closest('.remove-saved-outfit-btn');
+        if (wearButton) {
+          const outfit = savedOutfits.find(saved => saved.id === wearButton.dataset.id);
+          if (outfit) wearSavedOutfit(outfit);
+          return;
+        }
+        if (!removeButton) return;
+
+        savedOutfits = savedOutfits.filter(outfit => outfit.id !== removeButton.dataset.id);
+        persistSavedOutfits();
+        renderSavedOutfits();
       });
       wardrobeSearch.addEventListener('input', () => {
         activeSearch = normalizeText(wardrobeSearch.value.trim());
